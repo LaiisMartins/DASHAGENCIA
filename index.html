@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard · Faturamento</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --font-num: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-ui:  'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+  --font-head:'Syne', 'Helvetica Neue', Arial, sans-serif;
+  --bg:         #0b0d12;
+  --surface:    #111318;
+  --surface2:   #181b24;
+  --border:     #22273a;
+  --border2:    #2d3347;
+  --text:       #e6e8f0;
+  --muted:      #5c6378;
+  --muted2:     #8890a8;
+  --accent:     #4f7cff;
+  --accent2:    #a78bfa;
+  --green:      #22c55e;
+  --yellow:     #f59e0b;
+  --red:        #ef4444;
+  --green-dim:  rgba(34,197,94,0.1);
+  --yellow-dim: rgba(245,158,11,0.1);
+  --red-dim:    rgba(239,68,68,0.1);
+  --r:          12px;
+  --r-sm:       8px;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+body {
+  font-family:var(--font-ui);
+  background:var(--bg); color:var(--text);
+  min-height:100vh; font-size:14px; line-height:1.6;
+}
+
+/* ── HEADER ── */
+header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 28px; height:58px;
+  border-bottom:1px solid var(--border);
+  background:var(--surface);
+  position:sticky; top:0; z-index:300;
+}
+.logo { font-family:var(--font-num); font-weight:700; font-size:16px; letter-spacing:-.3px; }
+.header-right { display:flex; align-items:center; gap:10px; }
+
+.dias-wrap {
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:999px; padding:4px 14px;
+  font-size:12px; color:var(--muted2);
+  display:flex; align-items:center; gap:6px;
+}
+
+/* ── BOTÕES ── */
+.btn {
+  background:var(--accent); color:#fff; border:none;
+  border-radius:var(--r-sm); padding:7px 15px;
+  font-family:var(--font-head); font-weight:700; font-size:12px;
+  cursor:pointer; transition:opacity .15s, transform .1s; white-space:nowrap;
+}
+.btn:hover{opacity:.82;transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn-ghost { background:transparent; border:1px solid var(--border2); color:var(--muted2); }
+.btn-ghost:hover{background:var(--surface2);opacity:1}
+.btn-danger { background:transparent; border:1px solid var(--red-dim); color:var(--red); }
+.btn-danger:hover{background:var(--red-dim);opacity:1}
+.btn-sm { padding:5px 11px; font-size:11px; }
+.btn-virada {
+  background:transparent; border:1px solid rgba(245,158,11,0.4); color:var(--yellow);
+  border-radius:var(--r-sm); padding:7px 15px;
+  font-family:var(--font-head); font-weight:700; font-size:12px;
+  cursor:pointer; transition:background .15s; white-space:nowrap;
+}
+.btn-virada:hover{background:var(--yellow-dim)}
+.btn-add-header { display:flex; }
+
+/* ── TAB BAR ── */
+.tab-bar-wrap {
+  background:var(--surface); border-bottom:1px solid var(--border);
+  position:sticky; top:58px; z-index:200;
+  overflow-x:auto; scrollbar-width:thin; scrollbar-color:var(--border2) transparent;
+}
+.tab-bar-wrap::-webkit-scrollbar{height:3px}
+.tab-bar-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+.tab-bar { display:flex; align-items:stretch; padding:0 20px; min-width:max-content; }
+.tab {
+  display:flex; align-items:center; gap:7px;
+  padding:0 16px; height:46px;
+  font-size:12.5px; font-weight:500; color:var(--muted2);
+  cursor:pointer; border-bottom:2px solid transparent;
+  transition:color .15s, border-color .15s;
+  white-space:nowrap; user-select:none;
+}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+.tab-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.tab-x {
+  width:15px;height:15px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:var(--muted);
+  transition:background .15s,color .15s; cursor:pointer; margin-left:1px;
+}
+.tab-x:hover{background:var(--red-dim);color:var(--red)}
+.tab-add {
+  display:flex;align-items:center;
+  padding:0 14px;height:46px;
+  color:var(--muted);font-size:19px;cursor:pointer;
+  transition:color .15s;
+}
+.tab-add:hover{color:var(--accent)}
+
+/* ── MAIN ── */
+main{padding:24px 28px;max-width:1540px;margin:0 auto}
+
+/* ── DB STATUS ── */
+.db-status {
+  font-size:11px; color:var(--muted2);
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:999px; padding:4px 12px;
+  cursor:pointer; white-space:nowrap;
+  transition:border-color .2s;
+}
+.db-status:hover{border-color:var(--border2)}
+.db-status.ok  {color:var(--green);border-color:rgba(34,197,94,0.3)}
+.db-status.err {color:var(--red);border-color:rgba(239,68,68,0.3)}
+.db-status.sync{color:var(--yellow);border-color:rgba(245,158,11,0.3)}
+
+/* ── MODAL SUPABASE ── */
+.modal-overlay {
+  position:fixed;inset:0;background:rgba(0,0,0,.6);
+  z-index:600;display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal {
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:28px;width:480px;max-width:94vw;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+.modal h2{font-family:var(--font-head);font-weight:700;font-size:16px;margin-bottom:6px}
+.modal p{font-size:12.5px;color:var(--muted2);margin-bottom:20px;line-height:1.6}
+.modal-field{margin-bottom:14px}
+.modal-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px;display:block}
+.modal-input {
+  width:100%;background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r-sm);color:var(--text);
+  font-family:var(--font-num);font-size:13px;padding:9px 12px;outline:none;
+  transition:border-color .15s;
+}
+.modal-input:focus{border-color:var(--accent)}
+.modal-actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
+.modal-hint {
+  background:var(--surface2);border-radius:var(--r-sm);
+  padding:12px 14px;font-size:11.5px;color:var(--muted2);
+  margin-bottom:16px;line-height:1.6;border-left:3px solid var(--accent);
+}
+
+/* ── PAINEL HISTÓRICO ── */
+.hist-overlay {
+  position:fixed;top:0;right:0;bottom:0;left:0;
+  background:rgba(0,0,0,.55);z-index:400;
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.hist-overlay.open{opacity:1;pointer-events:all}
+.hist-panel {
+  position:fixed;top:0;right:0;bottom:0;width:420px;max-width:100vw;
+  background:var(--surface);border-left:1px solid var(--border);
+  z-index:401;display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
+}
+.hist-panel.open{transform:translateX(0)}
+.hist-head {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 22px;border-bottom:1px solid var(--border);
+}
+.hist-head h2{font-family:var(--font-head);font-weight:700;font-size:14px}
+.hist-close{font-size:20px;cursor:pointer;color:var(--muted);line-height:1}
+.hist-close:hover{color:var(--text)}
+.hist-filter {
+  padding:12px 22px;border-bottom:1px solid var(--border);
+  display:flex;gap:8px;flex-wrap:wrap;
+}
+.hist-filter select {
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);border-radius:var(--r-sm);
+  padding:5px 10px;font-size:12px;outline:none;
+  font-family:var(--font-ui);cursor:pointer;flex:1;min-width:120px;
+}
+.hist-filter select:focus{border-color:var(--accent)}
+.hist-body{flex:1;overflow-y:auto;padding:16px 22px}
+.hist-body::-webkit-scrollbar{width:4px}
+.hist-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+.hist-entry {
+  border-left:3px solid var(--border2);
+  padding:10px 14px;margin-bottom:10px;
+  background:var(--surface2);border-radius:0 var(--r-sm) var(--r-sm) 0;
+  transition:border-color .15s;
+}
+.hist-entry:hover{border-left-color:var(--accent)}
+.hist-entry-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.hist-entry-client{font-weight:600;font-size:12.5px}
+.hist-entry-time{font-size:11px;color:var(--muted);font-family:var(--font-num)}
+.hist-entry-field{font-size:11px;color:var(--muted2);margin-bottom:2px}
+.hist-entry-values{display:flex;align-items:center;gap:8px;font-size:13px;font-family:var(--font-num)}
+.hist-old{color:var(--muted);text-decoration:line-through}
+.hist-arrow{color:var(--muted);font-size:10px}
+.hist-new{font-weight:700;color:var(--text)}
+.hist-empty{text-align:center;padding:40px;color:var(--muted);font-size:13px}
+.hist-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px}
+
+/* ── CLIENT HEADER ── */
+.client-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:22px;gap:16px;flex-wrap:wrap;
+}
+.client-name-wrap{display:flex;align-items:center;gap:10px}
+.client-name-input{
+  font-family:var(--font-num);font-size:29px;font-weight:700;letter-spacing:-.8px;
+  color:var(--text);background:transparent;border:none;outline:none;
+  border-bottom:2px solid transparent;padding-bottom:2px;
+  transition:border-color .2s;max-width:380px;min-width:80px;
+}
+.client-name-input:focus{border-bottom-color:var(--accent)}
+.status-badge{
+  padding:3px 11px;border-radius:999px;
+  font-size:11.5px;font-weight:700;font-family:var(--font-head);
+}
+.badge-green{background:var(--green-dim);color:var(--green)}
+.badge-yellow{background:var(--yellow-dim);color:var(--yellow)}
+.badge-red{background:var(--red-dim);color:var(--red)}
+
+/* ── META BAR ── */
+.meta-bar-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:20px 24px;margin-bottom:20px;
+}
+.meta-bar-top{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:12px;flex-wrap:wrap;gap:10px;
+}
+.meta-bar-title{font-family:var(--font-head);font-weight:700;font-size:13px}
+.meta-nums{display:flex;gap:20px;font-size:12px;color:var(--muted2);flex-wrap:wrap;align-items:baseline}
+.meta-nums strong{font-family:var(--font-num);font-weight:700;color:var(--text);font-size:13px}
+.meta-pct{font-family:var(--font-num);font-weight:800;font-size:20px;letter-spacing:-.5px}
+.big-bar{height:9px;background:var(--surface2);border-radius:99px;overflow:hidden}
+.big-bar-fill{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+
+/* ── KPI GRID ── */
+.kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(165px,1fr));
+  gap:13px;margin-bottom:20px;
+}
+.kpi-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:18px 20px;
+  position:relative;overflow:hidden;
+}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi-card:nth-child(1)::before{background:var(--accent)}
+.kpi-card:nth-child(2)::before{background:var(--accent2)}
+.kpi-card:nth-child(3)::before{background:var(--green)}
+.kpi-card:nth-child(4)::before{background:#06b6d4}
+.kpi-card:nth-child(5)::before{background:var(--yellow)}
+.kpi-card:nth-child(6)::before{background:var(--red)}
+.kpi-label{font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;margin-bottom:6px}
+.kpi-value{font-family:var(--font-num);font-size:21px;font-weight:700;letter-spacing:-.5px;color:var(--text);line-height:1.1}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+/* ── CHARTS ── */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px}
+.chart-title{font-family:var(--font-head);font-weight:700;font-size:13px;margin-bottom:16px;color:var(--text)}
+.chart-wrap{position:relative;height:210px}
+
+/* ── FIELDS ── */
+.fields-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px 22px;margin-bottom:20px}
+.fields-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.fields-card h3{font-family:var(--font-head);font-weight:700;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px}
+.fields-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:14px}
+.field-group{display:flex;flex-direction:column;gap:4px}
+.field-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;font-weight:500}
+.field-input{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r-sm);color:var(--text);
+  font-family:var(--font-num);font-size:13.5px;
+  padding:8px 11px;outline:none;width:100%;
+  transition:border-color .15s;
+}
+.field-input:focus{border-color:var(--accent)}
+.field-input[readonly]{color:var(--muted2);cursor:default;border-color:transparent;background:transparent;padding-left:0}
+.computed{color:var(--accent2)!important;font-weight:700}
+.ok-val{color:var(--green)!important;font-weight:700}
+.warn-val{color:var(--yellow)!important;font-weight:700}
+.alert-val{color:var(--red)!important;font-weight:700}
+
+/* ── INSIGHTS ── */
+.insights-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+.insight-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+.insight-card h3{font-family:var(--font-head);font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;margin-bottom:12px}
+.ai{background:var(--surface2);border-radius:var(--r-sm);padding:10px 13px;margin-bottom:7px;font-size:12.5px;line-height:1.55;border-left:3px solid var(--yellow)}
+.ai:last-child{margin-bottom:0}
+.ai.green{border-left-color:var(--green)}
+.ai.red{border-left-color:var(--red)}
+
+/* ── VISÃO GERAL ── */
+.overview-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.overview-title{font-family:var(--font-num);font-weight:700;font-size:22px;letter-spacing:-.5px}
+.overview-subtitle{font-size:12px;color:var(--muted);margin-top:2px}
+.clients-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+
+/* ── CARDS ── */
+.client-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;
+  transition:border-color .2s,transform .15s,opacity .2s,box-shadow .2s;
+  display:flex;flex-direction:column;cursor:default;
+}
+.client-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+.client-card.dragging{opacity:.4;transform:scale(.97);box-shadow:0 8px 32px rgba(0,0,0,.5);border-color:var(--accent)}
+.client-card.drag-over{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent);transform:translateY(-3px)}
+.drag-handle{cursor:grab;color:var(--muted);font-size:14px;padding:2px 6px;border-radius:4px;transition:color .15s,background .15s;user-select:none;flex-shrink:0}
+.drag-handle:hover{color:var(--text);background:var(--surface2)}
+.drag-handle:active{cursor:grabbing}
+.client-card-top{padding:18px 20px 14px;border-bottom:1px solid var(--border)}
+.client-card-name{font-family:var(--font-num);font-size:16px;font-weight:700;letter-spacing:-.3px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card-name-input{font-family:var(--font-num);font-size:16px;font-weight:700;letter-spacing:-.3px;color:var(--text);background:transparent;border:none;outline:none;border-bottom:2px solid transparent;padding-bottom:1px;flex:1;min-width:0;transition:border-color .2s}
+.card-name-input:focus{border-bottom-color:var(--accent)}
+.client-card-bar-wrap{margin-bottom:8px}
+.client-card-bar-label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px}
+.client-card-bar{height:6px;background:var(--surface2);border-radius:99px;overflow:hidden}
+.client-card-bar-fill{height:100%;border-radius:99px}
+.client-card-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0}
+.cc-stat{padding:12px 14px;border-right:1px solid var(--border)}
+.cc-stat:last-child{border-right:none}
+.cc-stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px}
+.cc-stat-value{font-family:var(--font-num);font-size:13px;font-weight:700}
+.client-card-footer{padding:12px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto}
+.cc-alert-text{font-size:11.5px;color:var(--muted2);flex:1}
+.btn-detail{background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:var(--r-sm);padding:6px 14px;font-family:var(--font-head);font-size:11.5px;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s;white-space:nowrap;flex-shrink:0}
+.btn-detail:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+
+/* ── MOBILE ── */
+@media(max-width:680px){
+  header{flex-direction:column;align-items:stretch;height:auto;padding:12px 16px;gap:10px}
+  .logo{font-size:15px}
+  .header-right{flex-wrap:wrap;gap:8px}
+  .dias-wrap{width:100%;justify-content:center;font-size:11px;padding:6px 12px}
+  .btn-add-header{display:none!important}
+  .tab-bar-wrap{position:relative}
+  main{padding:14px 12px}
+  .hist-panel{width:100vw}
+  .charts-grid,.insights-row{grid-template-columns:1fr}
+  .fields-grid{grid-template-columns:1fr 1fr}
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .clients-grid{grid-template-columns:1fr}
+  .overview-header{flex-direction:column;align-items:flex-start}
+  .client-header{flex-direction:column;align-items:flex-start}
+  .meta-nums{gap:10px}
+}
+@media(min-width:681px) and (max-width:900px){
+  header{padding:0 20px}
+  .charts-grid,.insights-row{grid-template-columns:1fr}
+  .hist-panel{width:100vw}
+  main{padding:20px}
+}
+@media(min-width:681px){.btn-add-float{display:none!important}}
+
+.btn-add-float{
+  position:fixed;bottom:24px;right:20px;z-index:500;
+  background:var(--accent);color:#fff;border:none;border-radius:999px;
+  width:52px;height:52px;font-size:26px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;box-shadow:0 4px 20px rgba(79,124,255,0.45);
+  transition:transform .15s,opacity .15s;
+}
+.btn-add-float:hover{transform:scale(1.1)}
+
+/* ── REALTIME ── */
+.rt-dot {
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--muted);margin-right:5px;
+  transition:background .3s;
+}
+.rt-dot.live {
+  background:var(--green);
+  box-shadow:0 0 0 0 rgba(34,197,94,0.6);
+  animation:pulse-rt 2s infinite;
+}
+@keyframes pulse-rt {
+  0%  { box-shadow:0 0 0 0 rgba(34,197,94,0.6); }
+  70% { box-shadow:0 0 0 6px rgba(34,197,94,0); }
+  100%{ box-shadow:0 0 0 0 rgba(34,197,94,0); }
+}
+
+/* ── TOAST ── */
+.toast {
+  position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--surface);border:1px solid var(--border2);
+  color:var(--text);border-radius:999px;
+  padding:10px 20px;font-size:13px;font-weight:500;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);
+  z-index:999;transition:transform .3s cubic-bezier(.4,0,.2,1),opacity .3s;
+  opacity:0;pointer-events:none;white-space:nowrap;
+}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">Faturamento Clientes</div>
+  <div class="header-right">
+    <div class="dias-wrap">
+      📅 Dias restantes: <strong id="diasLabel" style="color:var(--accent);font-family:var(--font-num);font-weight:700"></strong>
+    </div>
+    <div id="dbStatus" class="db-status" title="Configurar banco de dados">⚪ Local</div>
+    <div id="rtStatus" style="font-size:11px;color:var(--muted);display:flex;align-items:center;padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:999px;">
+      <span class="rt-dot" id="rtDot"></span><span id="rtLabel">Offline</span>
+    </div>
+    <button class="btn-virada" onclick="viradaDeMes()">🔄 Virada de Mês</button>
+    <button class="btn btn-ghost btn-sm" onclick="openHist()">📋 Histórico</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportCSVTodos()">⬇ CSV</button>
+    <button class="btn btn-sm btn-add-header" onclick="addCliente()">+ Novo cliente</button>
+  </div>
+</header>
+
+<button class="btn-add-float" onclick="addCliente()" title="Novo cliente">+</button>
+<div class="toast" id="toast"></div>
+
+<!-- TAB BAR -->
+<div class="tab-bar-wrap">
+  <div class="tab-bar" id="tabBar"></div>
+</div>
+
+<!-- CONTEÚDO -->
+<main id="mainContent"></main>
+
+<!-- MODAL SUPABASE -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>🗄️ Banco de Dados (Supabase)</h2>
+    <p>Conecte ao Supabase para salvar na nuvem e compartilhar com sua equipe. Quem tiver a URL e a chave consegue ver e editar os dados.</p>
+    <div class="modal-hint">
+      <strong>Setup rápido:</strong><br>
+      1. Acesse <strong>supabase.com</strong> → crie projeto gratuito<br>
+      2. <strong>Settings → API</strong>: copie Project URL e anon key<br>
+      3. No <strong>SQL Editor</strong> execute:<br><br>
+      <code style="font-size:10px;color:var(--accent2);line-height:1.8">
+        CREATE TABLE IF NOT EXISTS clientes (id TEXT PRIMARY KEY, dados JSONB);<br>
+        CREATE TABLE IF NOT EXISTS historico (id BIGSERIAL PRIMARY KEY, entrada JSONB);<br>
+        ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;<br>
+        ALTER TABLE historico ENABLE ROW LEVEL SECURITY;<br>
+        CREATE POLICY "all" ON clientes FOR ALL USING (true) WITH CHECK (true);<br>
+        CREATE POLICY "all" ON historico FOR ALL USING (true) WITH CHECK (true);<br>
+        ALTER PUBLICATION supabase_realtime ADD TABLE clientes;<br>
+        ALTER PUBLICATION supabase_realtime ADD TABLE historico;
+      </code>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">URL do Projeto</label>
+      <input class="modal-input" id="sbUrl" placeholder="https://xxxxxxxxxxx.supabase.co" type="url">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Chave Anon (anon public key)</label>
+      <input class="modal-input" id="sbKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." type="text">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearSupabase()" style="color:var(--red);border-color:var(--red-dim)">Desconectar</button>
+      <button class="btn" onclick="saveSupabaseConfig()">Conectar e Sincronizar</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAINEL HISTÓRICO -->
+<div class="hist-overlay" id="histOverlay" onclick="closeHist()"></div>
+<div class="hist-panel" id="histPanel">
+  <div class="hist-head">
+    <h2>📋 Histórico de Alterações</h2>
+    <span class="hist-close" onclick="closeHist()">✕</span>
+  </div>
+  <div class="hist-filter">
+    <select id="histFilterCliente" onchange="renderHist()">
+      <option value="">Todos os clientes</option>
+    </select>
+    <select id="histFilterCampo" onchange="renderHist()">
+      <option value="">Todos os campos</option>
+      <option value="totalFaturado">Total Faturado</option>
+      <option value="roas">ROAS</option>
+      <option value="mediaDiaria">Média Diária</option>
+      <option value="projDiaria">Projeção</option>
+      <option value="meta">Meta</option>
+      <option value="metaDiaria">Meta Diária</option>
+      <option value="anoPassado">Ano Passado</option>
+      <option value="mesPassado">Mês Passado</option>
+      <option value="nome">Nome</option>
+    </select>
+  </div>
+  <div class="hist-body" id="histBody"></div>
+  <div class="hist-footer">
+    <button class="btn btn-ghost btn-sm" onclick="exportHistCSV()">⬇ Exportar histórico</button>
+    <button class="btn btn-danger btn-sm" onclick="clearHist()">🗑 Limpar</button>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   DADOS PADRÃO
+══════════════════════════════════════════════════ */
+const clientesDefault = [
+  'Bom Pastor','Parma','Esporte Legal','Outlet','Marken Fassi Site',
+  'Uai Utilidades','Shopee Marken Fassi','Móveis Europa',
+  'MadeMarcs','Confort In Box','Blossom'
+];
+
+function novoCliente(nome) {
+  return {
+    id: Date.now() + '-' + Math.random().toString(36).slice(2),
+    nome,
+    totalFaturado:0, roas:0, mediaDiaria:0, projDiaria:0,
+    anoPassado:0, mesPassado:0, meta:0, metaDiaria:0
+  };
+}
+
+/* ══════════════════════════════════════════════════
+   PERSISTÊNCIA LOCAL
+══════════════════════════════════════════════════ */
+function salvarClientes() {
+  localStorage.setItem('rdash_clientes', JSON.stringify(clientes));
+  sbPushClientes();
+}
+
+function salvarHistorico() {
+  if (historico.length > 1000) historico = historico.slice(-1000);
+  localStorage.setItem('rdash_historico', JSON.stringify(historico));
+}
+
+function carregarDados() {
+  try {
+    const c = localStorage.getItem('rdash_clientes');
+    if (c) return JSON.parse(c);
+  } catch(e) {}
+  return clientesDefault.map(novoCliente);
+}
+
+function carregarHistorico() {
+  try {
+    const h = localStorage.getItem('rdash_historico');
+    if (h) return JSON.parse(h);
+  } catch(e) {}
+  return [];
+}
+
+/* ══════════════════════════════════════════════════
+   SUPABASE
+══════════════════════════════════════════════════ */
+let SB_URL = (typeof __SB_URL__ !== 'undefined' && __SB_URL__) ? __SB_URL__ : (localStorage.getItem('sb_url') || '');
+let SB_KEY = (typeof __SB_KEY__ !== 'undefined' && __SB_KEY__) ? __SB_KEY__ : (localStorage.getItem('sb_key') || '');
+
+function sbHeaders() {
+  return {
+    'Content-Type':'application/json',
+    'apikey':SB_KEY,
+    'Authorization':`Bearer ${SB_KEY}`,
+    'Prefer':'return=minimal'
+  };
+}
+
+function setDbStatus(state, msg) {
+  const el = document.getElementById('dbStatus');
+  if (!el) return;
+  el.className = 'db-status ' + state;
+  el.textContent = msg;
+}
+
+async function _sbPushClientesOriginal() {
+  if (!SB_URL || !SB_KEY) return;
+  try {
+    setDbStatus('sync','🔄 Salvando...');
+    const body = clientes.map(c => ({ id:String(c.id), dados:c }));
+    const res = await fetch(`${SB_URL}/rest/v1/clientes`, {
+      method:'POST',
+      headers:{...sbHeaders(), 'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(await res.text());
+    setDbStatus('ok','🟢 Nuvem');
+  } catch(e) {
+    setDbStatus('err','🔴 Erro sync');
+    console.error('Supabase push:', e);
+  }
+}
+
+async function sbPullClientes() {
+  if (!SB_URL || !SB_KEY) return false;
+  try {
+    setDbStatus('sync','🔄 Buscando...');
+    const res = await fetch(`${SB_URL}/rest/v1/clientes?select=dados&order=dados->>ordem`, {
+      headers:sbHeaders()
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const rows = await res.json();
+    if (rows.length > 0) clientes = rows.map(r => r.dados);
+    setDbStatus('ok','🟢 Nuvem');
+    return true;
+  } catch(e) {
+    setDbStatus('err','🔴 Sem conexão');
+    console.error('Supabase pull:', e);
+    return false;
+  }
+}
+
+async function sbPushHistorico(entrada) {
+  if (!SB_URL || !SB_KEY) return;
+  try {
+    await fetch(`${SB_URL}/rest/v1/historico`, {
+      method:'POST', headers:sbHeaders(),
+      body:JSON.stringify({ entrada })
+    });
+  } catch(e) {}
+}
+
+async function sbPullHistorico() {
+  if (!SB_URL || !SB_KEY) return;
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/historico?select=entrada&order=id.asc&limit=1000`, {
+      headers:sbHeaders()
+    });
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (rows.length > 0) {
+      historico = rows.map(r => r.entrada);
+      localStorage.setItem('rdash_historico', JSON.stringify(historico));
+    }
+  } catch(e) {}
+}
+
+function openModal() {
+  // Se as credenciais vieram do build (Netlify), mostra info ao invés do form
+  const viaNetlify = typeof __SB_URL__ !== 'undefined' && __SB_URL__;
+  if (viaNetlify) {
+    alert('✅ Banco configurado via Netlify.\n\nAs credenciais do Supabase estão definidas nas variáveis de ambiente do Netlify.\nNão é necessário configurar manualmente.');
+    return;
+  }
+  document.getElementById('sbUrl').value = SB_URL;
+  document.getElementById('sbKey').value = SB_KEY;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+async function saveSupabaseConfig() {
+  const url = document.getElementById('sbUrl').value.trim().replace(/\/$/,'');
+  const key = document.getElementById('sbKey').value.trim();
+  if (!url || !key) { alert('Preencha URL e chave.'); return; }
+  SB_URL = url; SB_KEY = key;
+  localStorage.setItem('sb_url', url);
+  localStorage.setItem('sb_key', key);
+  closeModal();
+  setDbStatus('sync','🔄 Conectando...');
+  const ok = await sbPullClientes();
+  if (ok) {
+    await sbPullHistorico();
+    await sbPushClientes();
+    calcAll(); renderMain();
+    alert('✅ Conectado! Dados sincronizados.');
+  } else {
+    alert('❌ Falha na conexão. Verifique URL, chave e se as tabelas foram criadas.');
+  }
+}
+
+function clearSupabase() {
+  if (!confirm('Desconectar do banco e voltar ao modo local?')) return;
+  SB_URL = ''; SB_KEY = '';
+  localStorage.removeItem('sb_url');
+  localStorage.removeItem('sb_key');
+  setDbStatus('','⚪ Local');
+  closeModal();
+}
+
+async function initSupabase() {
+  if (!SB_URL || !SB_KEY) { setDbStatus('','⚪ Local'); return; }
+  setDbStatus('sync','🔄 Conectando...');
+  const ok = await sbPullClientes();
+  if (ok) {
+    await sbPullHistorico();
+    calcAll(); renderMain();
+    iniciarRealtime();
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   REALTIME — escuta mudanças em tempo real
+══════════════════════════════════════════════════ */
+let supabaseClient = null;
+let realtimeChannel = null;
+let _meuPush = false; // flag para ignorar echo das próprias edições
+
+function setRtStatus(live) {
+  const dot   = document.getElementById('rtDot');
+  const label = document.getElementById('rtLabel');
+  if (!dot||!label) return;
+  if (live) {
+    dot.classList.add('live');
+    label.textContent = 'Ao vivo';
+    label.style.color = 'var(--green)';
+  } else {
+    dot.classList.remove('live');
+    label.textContent = 'Offline';
+    label.style.color = 'var(--muted)';
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function iniciarRealtime() {
+  if (!SB_URL || !SB_KEY) return;
+
+  // Cria cliente Supabase com o SDK (necessário para Realtime)
+  supabaseClient = supabase.createClient(SB_URL, SB_KEY, {
+    realtime: { params: { eventsPerSecond: 10 } }
+  });
+
+  // Escuta mudanças na tabela clientes
+  realtimeChannel = supabaseClient
+    .channel('dashboard-sync')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'clientes'
+    }, async (payload) => {
+      // Ignora echo das próprias atualizações por 2s
+      if (_meuPush) return;
+
+      // Alguém externo mudou — puxa dados atualizados
+      await sbPullClientes();
+      calcAll();
+      renderMain();
+      showToast('🔄 Dados atualizados por outro usuário');
+    })
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'historico'
+    }, async () => {
+      if (_meuPush) return;
+      await sbPullHistorico();
+    })
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        setRtStatus(true);
+        setDbStatus('ok','🟢 Nuvem');
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        setRtStatus(false);
+        // Tenta reconectar após 5s
+        setTimeout(iniciarRealtime, 5000);
+      } else if (status === 'CLOSED') {
+        setRtStatus(false);
+      }
+    });
+}
+
+// Sobrescreve sbPushClientes para marcar o echo
+// Wrapper público — adiciona flag de echo para não reagir às próprias mudanças
+async function sbPushClientes() {
+  _meuPush = true;
+  await _sbPushClientesOriginal();
+  // Remove a flag após 2s (tempo suficiente para o Realtime devolver o echo)
+  setTimeout(() => { _meuPush = false; }, 2000);
+}
+
+/* ══════════════════════════════════════════════════
+   ESTADO
+══════════════════════════════════════════════════ */
+let clientes  = carregarDados();
+let historico = carregarHistorico();
+let charts    = {};
+let currentView = 'overview';
+
+/* ══════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════ */
+const fmt    = n => Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+const fmtPct = n => (n>=0?'+':'')+Number(n).toFixed(1)+'%';
+
+function diasRestantes() {
+  const hoje = new Date();
+  return new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate() - hoje.getDate();
+}
+const dr = diasRestantes;
+
+function diasCorridos() { return new Date().getDate(); }
+function diasNoMes() {
+  const h = new Date();
+  return new Date(h.getFullYear(), h.getMonth()+1, 0).getDate();
+}
+
+function agora() {
+  return new Date().toLocaleString('pt-BR',{
+    day:'2-digit',month:'2-digit',year:'numeric',
+    hour:'2-digit',minute:'2-digit',second:'2-digit'
+  });
+}
+
+const FIELD_LABELS = {
+  nome:'Nome', totalFaturado:'Total Faturado', roas:'ROAS',
+  mediaDiaria:'Média Diária', projDiaria:'Projeção do Mês',
+  anoPassado:'Ano Passado', mesPassado:'Mês Passado',
+  meta:'Meta', metaDiaria:'Meta Diária'
+};
+
+function fmtVal(field, v) {
+  if (field === 'roas') return Number(v).toFixed(1)+'x';
+  if (field === 'nome') return v;
+  return fmt(v);
+}
+
+function calc(c) {
+  c._faltaMeta  = Math.max(0, c.meta - c.totalFaturado);
+  c._pctMeta    = c.meta > 0 ? (c.totalFaturado / c.meta)*100 : 0;
+  c._faturarDia = dr() > 0 ? c._faltaMeta / dr() : 0;
+  c._varMes     = c.mesPassado > 0 ? ((c.projDiaria - c.mesPassado)/c.mesPassado)*100 : 0;
+}
+function calcAll() { clientes.forEach(calc); }
+
+function statusOf(c) {
+  if (c._pctMeta >= 100) return {label:'✅ Meta batida',cls:'badge-green',dot:'#22c55e',bar:'#22c55e'};
+  if (c._pctMeta >= 70)  return {label:'⚠️ Atenção',   cls:'badge-yellow',dot:'#f59e0b',bar:'#f59e0b'};
+  return                        {label:'🔴 Abaixo',     cls:'badge-red',   dot:'#ef4444',bar:'#ef4444'};
+}
+
+function esc(s) { return String(s).replace(/"/g,'&quot;'); }
+
+/* ══════════════════════════════════════════════════
+   HISTÓRICO
+══════════════════════════════════════════════════ */
+function registrarAlteracao(cliente, field, de, para) {
+  if (de === para) return;
+  const entrada = {
+    ts:new Date().toISOString(), tsFormatado:agora(),
+    clienteId:cliente.id, clienteNome:cliente.nome,
+    field, fieldLabel:FIELD_LABELS[field]||field, de, para
+  };
+  historico.push(entrada);
+  salvarHistorico();
+  sbPushHistorico(entrada);
+}
+
+/* ══════════════════════════════════════════════════
+   TAB BAR
+══════════════════════════════════════════════════ */
+function renderTabs() {
+  const bar = document.getElementById('tabBar');
+  bar.innerHTML = '';
+
+  const home = document.createElement('div');
+  home.className = 'tab' + (currentView==='overview'?' active':'');
+  home.innerHTML = `<span style="font-size:13px">⊞</span> Visão Geral`;
+  home.onclick = () => { currentView='overview'; renderMain(); };
+  bar.appendChild(home);
+
+  const sep = document.createElement('div');
+  sep.style.cssText = 'width:1px;background:var(--border);margin:10px 4px';
+  bar.appendChild(sep);
+
+  clientes.forEach((c,i) => {
+    const st = statusOf(c);
+    const tab = document.createElement('div');
+    tab.className = 'tab'+(currentView===i?' active':'');
+    tab.innerHTML = `<span class="tab-dot" style="background:${st.dot}"></span><span>${c.nome}</span><span class="tab-x" data-i="${i}">✕</span>`;
+    tab.addEventListener('click', e => {
+      if (e.target.classList.contains('tab-x')) return;
+      currentView=i; renderMain();
+    });
+    tab.querySelector('.tab-x').addEventListener('click', e => {
+      e.stopPropagation(); removeCliente(i);
+    });
+    bar.appendChild(tab);
+  });
+
+  const add = document.createElement('div');
+  add.className='tab-add'; add.title='Novo cliente'; add.textContent='+';
+  add.onclick=addCliente;
+  bar.appendChild(add);
+}
+
+/* ══════════════════════════════════════════════════
+   ROTEADOR
+══════════════════════════════════════════════════ */
+function renderMain() {
+  calcAll(); renderTabs();
+  const lbl = document.getElementById('diasLabel');
+  if (lbl) lbl.textContent = dr();
+  if (currentView==='overview') renderOverview();
+  else renderActive(currentView);
+}
+
+/* ══════════════════════════════════════════════════
+   VISÃO GERAL
+══════════════════════════════════════════════════ */
+function renderOverview() {
+  const acima   = clientes.filter(c => c._pctMeta>=100).length;
+  const atencao = clientes.filter(c => c._pctMeta>=70&&c._pctMeta<100).length;
+  const abaixo  = clientes.filter(c => c._pctMeta<70).length;
+
+  const dot = (cor) => `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${cor};margin-right:6px"></span>`;
+
+  const cardsHTML = clientes.map((c,i) => {
+    const st  = statusOf(c);
+    const pct = Math.min(100, c._pctMeta);
+
+    let alertText = '';
+    if (c._pctMeta>=100) alertText='🎉 Meta batida!';
+    else if (c._faltaMeta>0&&dr()>0) alertText=`Precisa de ${fmt(c._faturarDia)}/dia`;
+    else alertText=`${fmt(c._faltaMeta)} p/ meta`;
+
+    const anterior = roasOntem(c.id);
+    let roasDeltaHTML = '';
+    if (anterior!==null&&c.roas>0) {
+      const diff=c.roas-anterior;
+      const sinal=diff>0?'▲':diff<0?'▼':'—';
+      const cor=diff>0?'var(--green)':diff<0?'var(--red)':'var(--muted)';
+      roasDeltaHTML=`<span style="color:${cor};font-size:10px;font-weight:700;margin-left:4px">${sinal}${Math.abs(diff).toFixed(1)}</span>`;
+    }
+
+    return `
+    <div class="client-card" draggable="true" data-idx="${i}"
+      ondragstart="dragStart(event,${i})" ondragover="dragOver(event)"
+      ondragleave="dragLeave(event)" ondrop="dragDrop(event,${i})" ondragend="dragEnd(event)">
+      <div class="client-card-top">
+        <div class="client-card-name">
+          <span class="drag-handle" title="Arrastar para reordenar">⠿</span>
+          <input class="card-name-input" value="${esc(c.nome)}" title="Editar nome"
+            onchange="updateNomeCard(${i},this.value)" onclick="event.stopPropagation()"/>
+          <span class="status-badge ${st.cls}" style="font-size:10.5px;flex-shrink:0">${st.label}</span>
+        </div>
+        <div class="client-card-bar-wrap">
+          <div class="client-card-bar-label">
+            <span>${fmt(c.totalFaturado)} faturado</span>
+            <span style="font-weight:700;color:${st.bar}">${c._pctMeta.toFixed(0)}%</span>
+          </div>
+          <div class="client-card-bar">
+            <div class="client-card-bar-fill" style="width:${pct}%;background:${st.bar}"></div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">Meta: ${fmt(c.meta)}</div>
+        </div>
+      </div>
+      <div class="client-card-stats">
+        <div class="cc-stat">
+          <div class="cc-stat-label">ROAS</div>
+          <div class="cc-stat-value">${c.roas.toFixed(1)}x${roasDeltaHTML}</div>
+        </div>
+        <div class="cc-stat">
+          <div class="cc-stat-label">Média/Dia</div>
+          <div class="cc-stat-value">${fmt(c.mediaDiaria)}</div>
+        </div>
+        <div class="cc-stat">
+          <div class="cc-stat-label">Projeção</div>
+          <div class="cc-stat-value" style="color:${c.projDiaria>=c.meta?'var(--green)':'var(--red)'}">${fmt(c.projDiaria)}</div>
+        </div>
+      </div>
+      <div class="client-card-footer">
+        <span class="cc-alert-text">${alertText}</span>
+        <button class="btn-detail" onclick="goToCliente(${i})">Ver detalhes →</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="overview-header">
+      <div>
+        <div class="overview-title">Visão Geral</div>
+        <div class="overview-subtitle">${clientes.length} clientes · ${dr()} dias restantes no mês</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="display:flex;gap:18px;font-size:13px;align-items:center">
+          <span>${dot('var(--green)')}<strong style="color:var(--green)">${acima}</strong> <span style="color:var(--muted)">na meta</span></span>
+          <span>${dot('var(--yellow)')}<strong style="color:var(--yellow)">${atencao}</strong> <span style="color:var(--muted)">atenção</span></span>
+          <span>${dot('var(--red)')}<strong style="color:var(--red)">${abaixo}</strong> <span style="color:var(--muted)">crítico</span></span>
+        </div>
+        <button class="btn btn-sm" onclick="addCliente()">+ Novo cliente</button>
+      </div>
+    </div>
+    <div class="clients-grid">${cardsHTML}</div>
+  `;
+}
+
+function goToCliente(idx) { currentView=idx; renderMain(); }
+
+function updateNomeCard(idx, value) {
+  const c = clientes[idx];
+  if (!value.trim()||value===c.nome) return;
+  registrarAlteracao(c,'nome',c.nome,value.trim());
+  c.nome = value.trim();
+  salvarClientes(); renderTabs();
+}
+
+/* ══════════════════════════════════════════════════
+   DETALHE DO CLIENTE
+══════════════════════════════════════════════════ */
+function renderActive(idx) {
+  const c  = clientes[idx];
+  const st = statusOf(c);
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="client-header">
+      <div class="client-name-wrap">
+        <input class="client-name-input" value="${esc(c.nome)}" title="Editar nome"
+          onchange="updateField('nome',this.value)"/>
+        <span class="status-badge ${st.cls}">${st.label}</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="currentView='overview';renderMain()">← Visão Geral</button>
+        <button class="btn btn-ghost btn-sm" onclick="openHist()">📋 Histórico</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportCSVCliente()">⬇ CSV</button>
+        <button class="btn btn-danger btn-sm" onclick="removeCliente(${idx})">Remover</button>
+      </div>
+    </div>
+
+    <div class="meta-bar-card">
+      <div class="meta-bar-top">
+        <span class="meta-bar-title">🎯 Progresso da Meta</span>
+        <div class="meta-nums">
+          <span>Realizado: <strong>${fmt(c.totalFaturado)}</strong></span>
+          <span>Meta: <strong>${fmt(c.meta)}</strong></span>
+          <span>Faltam: <strong style="color:${c._faltaMeta>0?'var(--red)':'var(--green)'}">${fmt(c._faltaMeta)}</strong></span>
+          <span class="meta-pct" style="color:${st.bar}">${c._pctMeta.toFixed(1)}%</span>
+        </div>
+      </div>
+      <div class="big-bar">
+        <div class="big-bar-fill" style="width:${Math.min(100,c._pctMeta)}%;background:${st.bar}"></div>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">💰 Total Faturado</div>
+        <div class="kpi-value">${fmt(c.totalFaturado)}</div>
+        <div class="kpi-sub">no mês atual</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">📈 ROAS</div>
+        <div class="kpi-value">${c.roas.toFixed(1)}x</div>
+        <div class="kpi-sub" id="roasDelta">retorno sobre ads</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">📅 Média Diária</div>
+        <div class="kpi-value">${fmt(c.mediaDiaria)}</div>
+        <div class="kpi-sub">faturamento/dia</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">🔮 Projeção Final</div>
+        <div class="kpi-value">${fmt(c.projDiaria)}</div>
+        <div class="kpi-sub" style="color:${c.projDiaria>=c.meta?'var(--green)':'var(--red)'}">
+          ${c.projDiaria>=c.meta?'▲ acima da meta':'▼ abaixo da meta'}
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">⚡ Faturar / Dia</div>
+        <div class="kpi-value" style="color:${c._faturarDia>c.metaDiaria?'var(--red)':'var(--yellow)'}">
+          ${fmt(c._faturarDia)}
+        </div>
+        <div class="kpi-sub">em ${dr()} dias restantes</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">📊 Var. vs Mês Ant.</div>
+        <div class="kpi-value" style="color:${c._varMes>=0?'var(--green)':'var(--red)'}">
+          ${fmtPct(c._varMes)}
+        </div>
+        <div class="kpi-sub">projeção vs ${fmt(c.mesPassado)}</div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">📊 Realizado · Meta · Projeção</div>
+        <div class="chart-wrap"><canvas id="cBarras"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">📅 Diário: Média · Meta Fixa · Necessário</div>
+        <div class="chart-wrap"><canvas id="cDiario"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">📆 Histórico: Ano Ant. · Mês Ant. · Atual</div>
+        <div class="chart-wrap"><canvas id="cHist"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">🎯 Gauge da Meta</div>
+        <div class="chart-wrap" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+          <canvas id="cGauge" style="max-height:140px"></canvas>
+          <div style="font-family:var(--font-num);font-size:26px;font-weight:700;color:${st.bar};margin-top:-20px;letter-spacing:-.5px">
+            ${c._pctMeta.toFixed(0)}%
+          </div>
+          <div style="font-size:11px;color:var(--muted)">da meta atingida</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fields-card">
+      <div class="fields-card-head">
+        <h3>✏️ Editar dados</h3>
+        <span style="font-size:11px;color:var(--muted)">Alterações salvas automaticamente com data e hora</span>
+      </div>
+      <div class="fields-grid">
+        <div class="field-group">
+          <label class="field-label">Total Faturado (R$)</label>
+          <input class="field-input" type="number" value="${c.totalFaturado}"
+            onchange="updateField('totalFaturado',+this.value)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">ROAS</label>
+          <input class="field-input" type="number" step="0.1" value="${c.roas}"
+            onchange="updateField('roas',+this.value)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">🔒 Média Diária <span style="color:var(--accent2);font-size:9px">AUTO</span></label>
+          <input class="field-input computed" readonly value="${fmt(c.mediaDiaria)}">
+        </div>
+        <div class="field-group">
+          <label class="field-label">🔒 Projeção do Mês <span style="color:var(--accent2);font-size:9px">AUTO</span></label>
+          <input class="field-input computed" readonly value="${fmt(c.projDiaria)}">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Ano Passado (R$)</label>
+          <input class="field-input" type="number" value="${c.anoPassado}"
+            onchange="updateField('anoPassado',+this.value)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Mês Passado (R$)</label>
+          <input class="field-input" type="number" value="${c.mesPassado}"
+            onchange="updateField('mesPassado',+this.value)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Meta do Mês (R$)</label>
+          <input class="field-input" type="number" value="${c.meta}"
+            onchange="updateField('meta',+this.value)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">🔒 Meta Diária Fixa <span style="color:var(--accent2);font-size:9px">AUTO</span></label>
+          <input class="field-input computed" readonly value="${fmt(c.metaDiaria)}">
+        </div>
+        <div class="field-group">
+          <label class="field-label">🔒 Faltam p/ Meta</label>
+          <input class="field-input computed" readonly value="${fmt(c._faltaMeta)}">
+        </div>
+        <div class="field-group">
+          <label class="field-label">🔒 % da Meta</label>
+          <input class="field-input ${c._pctMeta>=100?'ok-val':c._pctMeta>=70?'warn-val':'alert-val'}" readonly value="${c._pctMeta.toFixed(1)}%">
+        </div>
+        <div class="field-group">
+          <label class="field-label">🔒 Faturar/Dia Necessário</label>
+          <input class="field-input ${c._faturarDia>c.metaDiaria?'alert-val':'ok-val'}" readonly value="${fmt(c._faturarDia)}">
+        </div>
+        <div class="field-group">
+          <label class="field-label">🔒 Var. vs Mês Passado</label>
+          <input class="field-input ${c._varMes>=0?'ok-val':'alert-val'}" readonly value="${fmtPct(c._varMes)}">
+        </div>
+      </div>
+    </div>
+
+    <div class="insights-row">
+      <div class="insight-card">
+        <h3>⚠️ Alertas automáticos</h3>
+        <div id="alertBox"></div>
+      </div>
+      <div class="insight-card">
+        <h3>💡 Análise rápida</h3>
+        <div id="analBox"></div>
+      </div>
+    </div>
+  `;
+
+  buildCharts(c, st.bar);
+  buildInsights(c);
+
+  const roasDeltaEl = document.getElementById('roasDelta');
+  if (roasDeltaEl) {
+    const anterior = roasOntem(c.id);
+    if (anterior!==null&&c.roas>0) {
+      const diff=c.roas-anterior;
+      const sinal=diff>0?'▲':diff<0?'▼':'—';
+      const cor=diff>0?'var(--green)':diff<0?'var(--red)':'var(--muted)';
+      roasDeltaEl.innerHTML=`<span style="color:${cor};font-weight:700">${sinal} ${Math.abs(diff).toFixed(1)}x vs ontem</span>`;
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   GRÁFICOS
+══════════════════════════════════════════════════ */
+const CD = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{
+    legend:{labels:{color:'#8890a8',font:{family:'DM Sans',size:11}}},
+    tooltip:{
+      backgroundColor:'#181b24',borderColor:'#22273a',borderWidth:1,
+      titleColor:'#e6e8f0',bodyColor:'#8890a8',padding:10,
+      callbacks:{label:ctx=>' '+fmt(ctx.parsed.y??ctx.parsed)}
+    }
+  },
+  scales:{
+    x:{ticks:{color:'#5c6378',font:{family:'DM Sans',size:11}},grid:{color:'#22273a'}},
+    y:{ticks:{color:'#5c6378',font:{family:'DM Sans',size:11},
+       callback:v=>'R$'+(v>=1000?(v/1000).toFixed(0)+'k':v)},grid:{color:'#22273a'}}
+  }
+};
+
+function buildCharts(c, barColor) {
+  ['cBarras','cDiario','cHist','cGauge'].forEach(id => {
+    if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+  });
+
+  charts.cBarras = new Chart(document.getElementById('cBarras'),{
+    type:'bar',
+    data:{labels:['Realizado','Meta','Projeção'],datasets:[{
+      data:[c.totalFaturado,c.meta,c.projDiaria],
+      backgroundColor:[barColor,'rgba(255,255,255,0.06)','#4f7cff'],
+      borderRadius:7,borderSkipped:false
+    }]},
+    options:{...CD,plugins:{...CD.plugins,legend:{display:false}}}
+  });
+
+  charts.cDiario = new Chart(document.getElementById('cDiario'),{
+    type:'bar',
+    data:{labels:['Média Diária','Meta Diária','Faturar/Dia'],datasets:[{
+      data:[c.mediaDiaria,c.metaDiaria,c._faturarDia],
+      backgroundColor:['#4f7cff','rgba(255,255,255,0.06)',c._faturarDia>c.metaDiaria?'#ef4444':'#f59e0b'],
+      borderRadius:7,borderSkipped:false
+    }]},
+    options:{...CD,plugins:{...CD.plugins,legend:{display:false}}}
+  });
+
+  charts.cHist = new Chart(document.getElementById('cHist'),{
+    type:'bar',
+    data:{labels:['Ano Passado','Mês Passado','Mês Atual'],datasets:[{
+      data:[c.anoPassado,c.mesPassado,c.totalFaturado],
+      backgroundColor:['rgba(167,139,250,0.35)','rgba(167,139,250,0.6)','#a78bfa'],
+      borderRadius:7,borderSkipped:false
+    }]},
+    options:{...CD,plugins:{...CD.plugins,legend:{display:false}}}
+  });
+
+  const pct=Math.min(100,c._pctMeta);
+  charts.cGauge = new Chart(document.getElementById('cGauge'),{
+    type:'doughnut',
+    data:{labels:['Atingido','Restante'],datasets:[{
+      data:[pct,Math.max(0,100-pct)],
+      backgroundColor:[barColor,'rgba(255,255,255,0.04)'],
+      borderWidth:0,hoverOffset:0
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      cutout:'74%',rotation:-90,circumference:180,
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'#181b24',borderColor:'#22273a',borderWidth:1,
+        titleColor:'#e6e8f0',bodyColor:'#8890a8',
+        callbacks:{label:ctx=>' '+ctx.parsed.toFixed(1)+'%'}
+      }}
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   INSIGHTS
+══════════════════════════════════════════════════ */
+function buildInsights(c) {
+  let alerts='';
+  if (c._pctMeta>=100)
+    alerts+=`<div class="ai green">✅ <strong>Meta batida!</strong> ${fmt(c.totalFaturado)} de ${fmt(c.meta)}.</div>`;
+  if (c._faltaMeta>0&&dr()>0) {
+    const urg=c._faturarDia>c.metaDiaria;
+    alerts+=`<div class="ai ${urg?'red':''}">📌 Precisa faturar <strong>${fmt(c._faturarDia)}/dia</strong> nos próximos ${dr()} dias.
+      ${urg?`<br>⚠️ Isso é <strong>${fmt(c._faturarDia-c.metaDiaria)}</strong> acima da meta diária fixa.`:''}</div>`;
+  }
+  if (c._varMes<-10)
+    alerts+=`<div class="ai red">📉 Projeção <strong>${Math.abs(c._varMes).toFixed(1)}% abaixo</strong> do mês passado (${fmt(c.mesPassado)}).</div>`;
+  else if (c._varMes<0)
+    alerts+=`<div class="ai">📉 Projeção levemente abaixo do mês passado: <strong>${fmtPct(c._varMes)}</strong>.</div>`;
+  else
+    alerts+=`<div class="ai green">📈 Projeção <strong>${fmtPct(c._varMes)} acima</strong> do mês passado.</div>`;
+  if (c.projDiaria<c.meta)
+    alerts+=`<div class="ai red">🔮 Projeção atual <strong>não atinge</strong> a meta. Déficit de ${fmt(c.meta-c.projDiaria)}.</div>`;
+  else
+    alerts+=`<div class="ai green">🔮 Projeção de ${fmt(c.projDiaria)} <strong>supera</strong> a meta em ${fmt(c.projDiaria-c.meta)}.</div>`;
+  document.getElementById('alertBox').innerHTML=alerts;
+
+  let analise='';
+  const roasOk=c.roas>=4?['Excelente','green']:c.roas>=2.5?['Moderado','']:['Baixo — revisar ads','red'];
+  analise+=`<div class="ai ${roasOk[1]}">📈 ROAS <strong>${c.roas.toFixed(1)}x</strong> — ${roasOk[0]}.</div>`;
+  if (c.mediaDiaria>=c.metaDiaria)
+    analise+=`<div class="ai green">📅 Média diária (${fmt(c.mediaDiaria)}) acima da meta diária (${fmt(c.metaDiaria)}).</div>`;
+  else
+    analise+=`<div class="ai">📅 Média diária abaixo em <strong>${fmt(c.metaDiaria-c.mediaDiaria)}</strong> vs meta diária.</div>`;
+  if (c.anoPassado>0) {
+    const yoy=((c.totalFaturado-c.anoPassado)/c.anoPassado)*100;
+    analise+=`<div class="ai ${yoy>=0?'green':'red'}">📆 Vs. ano passado: <strong>${fmtPct(yoy)}</strong> (${fmt(c.anoPassado)} → ${fmt(c.totalFaturado)}).</div>`;
+  }
+  if (c._pctMeta<70&&c.meta>0)
+    analise+=`<div class="ai red">🚨 Performance crítica: ${c._pctMeta.toFixed(0)}% da meta — ação urgente.</div>`;
+  document.getElementById('analBox').innerHTML=analise;
+}
+
+/* ══════════════════════════════════════════════════
+   ROAS DELTA
+══════════════════════════════════════════════════ */
+function roasOntem(clienteId) {
+  const hoje=new Date().toDateString();
+  for (let i=historico.length-1;i>=0;i--) {
+    const h=historico[i];
+    if (h.clienteId===clienteId&&h.field==='roas') {
+      if (new Date(h.ts).toDateString()!==hoje) return Number(h.para);
+    }
+  }
+  return null;
+}
+
+/* ══════════════════════════════════════════════════
+   AÇÕES
+══════════════════════════════════════════════════ */
+function updateField(field, value) {
+  const c=clientes[currentView];
+  const antigo=c[field];
+  c[field]=value;
+
+  if (field==='totalFaturado'&&value>0) {
+    const corridos=diasCorridos(), totalDias=diasNoMes();
+    const novaMedia=corridos>0?Math.round(value/corridos):0;
+    const novaProj=Math.round(novaMedia*totalDias);
+    const novaMetaDiaria=(c.meta>0&&c.metaDiaria===0)?Math.round(c.meta/totalDias):c.metaDiaria;
+    if (novaMedia!==c.mediaDiaria){registrarAlteracao(c,'mediaDiaria',c.mediaDiaria,novaMedia);c.mediaDiaria=novaMedia;}
+    if (novaProj!==c.projDiaria){registrarAlteracao(c,'projDiaria',c.projDiaria,novaProj);c.projDiaria=novaProj;}
+    if (novaMetaDiaria!==c.metaDiaria){registrarAlteracao(c,'metaDiaria',c.metaDiaria,novaMetaDiaria);c.metaDiaria=novaMetaDiaria;}
+  }
+
+  if (antigo!==value) registrarAlteracao(c,field,antigo,value);
+  salvarClientes();
+  renderMain();
+}
+
+function addCliente() {
+  const c=novoCliente('Novo Cliente');
+  clientes.push(c);
+  currentView=clientes.length-1;
+  salvarClientes(); renderMain();
+}
+
+function removeCliente(idx) {
+  if (!confirm(`Remover "${clientes[idx].nome}"?`)) return;
+  clientes.splice(idx,1);
+  currentView='overview';
+  salvarClientes(); renderMain();
+}
+
+/* ══════════════════════════════════════════════════
+   VIRADA DE MÊS
+══════════════════════════════════════════════════ */
+function viradaDeMes() {
+  if (!confirm('🔄 Virada de Mês\n\nIsso vai:\n• Copiar Total Faturado → Mês Passado\n• Zerar: Total Faturado, Média Diária, Projeção\n\nContinuar?')) return;
+  clientes.forEach(c => {
+    registrarAlteracao(c,'mesPassado',c.mesPassado,c.totalFaturado);
+    c.mesPassado=c.totalFaturado;
+    ['totalFaturado','mediaDiaria','projDiaria'].forEach(f => {
+      if (c[f]!==0){registrarAlteracao(c,f,c[f],0);c[f]=0;}
+    });
+  });
+  salvarClientes(); calcAll(); renderMain();
+  alert('✅ Virada de mês concluída!');
+}
+
+/* ══════════════════════════════════════════════════
+   DRAG AND DROP
+══════════════════════════════════════════════════ */
+let dragSrcIdx=null;
+
+function dragStart(e,idx) {
+  dragSrcIdx=idx; e.dataTransfer.effectAllowed='move';
+  setTimeout(()=>{ e.currentTarget?.classList.add('dragging'); },0);
+}
+function dragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect='move'; e.currentTarget.classList.add('drag-over'); }
+function dragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function dragDrop(e,targetIdx) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  if (dragSrcIdx===null||dragSrcIdx===targetIdx) return;
+  const item=clientes.splice(dragSrcIdx,1)[0];
+  clientes.splice(targetIdx,0,item);
+  dragSrcIdx=null; salvarClientes(); renderMain();
+}
+function dragEnd(e) {
+  dragSrcIdx=null;
+  document.querySelectorAll('.client-card').forEach(el=>el.classList.remove('dragging','drag-over'));
+}
+
+/* ══════════════════════════════════════════════════
+   HISTÓRICO — PAINEL
+══════════════════════════════════════════════════ */
+function openHist() {
+  const sel=document.getElementById('histFilterCliente');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Todos os clientes</option>';
+  clientes.forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c.nome; o.textContent=c.nome; sel.appendChild(o);
+  });
+  sel.value=cur;
+  renderHist();
+  document.getElementById('histOverlay').classList.add('open');
+  document.getElementById('histPanel').classList.add('open');
+}
+function closeHist() {
+  document.getElementById('histOverlay').classList.remove('open');
+  document.getElementById('histPanel').classList.remove('open');
+}
+function renderHist() {
+  const fc=document.getElementById('histFilterCliente').value;
+  const ff=document.getElementById('histFilterCampo').value;
+  let lista=[...historico].reverse();
+  if (fc) lista=lista.filter(h=>h.clienteNome===fc);
+  if (ff) lista=lista.filter(h=>h.field===ff);
+  const body=document.getElementById('histBody');
+  if (!lista.length) {
+    body.innerHTML='<div class="hist-empty">📭 Nenhuma alteração registrada ainda.</div>'; return;
+  }
+  body.innerHTML=lista.map(h=>`
+    <div class="hist-entry">
+      <div class="hist-entry-top">
+        <span class="hist-entry-client">${h.clienteNome}</span>
+        <span class="hist-entry-time">${h.tsFormatado}</span>
+      </div>
+      <div class="hist-entry-field">${h.fieldLabel}</div>
+      <div class="hist-entry-values">
+        <span class="hist-old">${fmtVal(h.field,h.de)}</span>
+        <span class="hist-arrow">→</span>
+        <span class="hist-new">${fmtVal(h.field,h.para)}</span>
+      </div>
+    </div>`).join('');
+}
+function clearHist() {
+  if (!confirm('Apagar todo o histórico?')) return;
+  historico=[]; salvarHistorico(); renderHist();
+}
+function exportHistCSV() {
+  const headers=['Data/Hora','Cliente','Campo','De','Para'];
+  const rows=[...historico].reverse().map(h=>[h.tsFormatado,h.clienteNome,h.fieldLabel,h.de,h.para]);
+  dlCSV([headers,...rows],'historico_alteracoes.csv');
+}
+
+/* ══════════════════════════════════════════════════
+   EXPORTAR CSV
+══════════════════════════════════════════════════ */
+const CSVh=['Cliente','Total Faturado','ROAS','Média Diária','Projeção','Ano Passado','Mês Passado','Var Mês (%)','Meta','Faltam','% Meta','Faturar/Dia','Meta Diária'];
+
+function exportCSVTodos() {
+  calcAll();
+  const rows=clientes.map(c=>[c.nome,c.totalFaturado,c.roas,c.mediaDiaria,c.projDiaria,c.anoPassado,c.mesPassado,c._varMes.toFixed(1),c.meta,c._faltaMeta,c._pctMeta.toFixed(1),c._faturarDia.toFixed(0),c.metaDiaria]);
+  dlCSV([CSVh,...rows],'dashboard_todos.csv');
+}
+function exportCSVCliente() {
+  const c=clientes[currentView]; calc(c);
+  dlCSV([CSVh,[c.nome,c.totalFaturado,c.roas,c.mediaDiaria,c.projDiaria,c.anoPassado,c.mesPassado,c._varMes.toFixed(1),c.meta,c._faltaMeta,c._pctMeta.toFixed(1),c._faturarDia.toFixed(0),c.metaDiaria]],`${c.nome.replace(/\s+/g,'_')}.csv`);
+}
+function dlCSV(rows,name) {
+  const csv=rows.map(r=>r.join(';')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=name; a.click();
+}
+
+/* ══════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════ */
+document.getElementById('dbStatus').addEventListener('click', openModal);
+renderMain();
+initSupabase();
+</script>
+</body>
+</html>
